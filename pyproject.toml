@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "t-code"
+version = "0.1.0"
+description = "基于 DeepSeek API 的最小化 Agent 示例，逐步演进到 MCP 集成"
+readme = "环境说明.md"
+requires-python = ">=3.12"
+dependencies = [
+    "openai>=1.0",
+    "python-dotenv",
+    "fastmcp>=3.0",
+]
+
+[tool.setuptools]
+py-modules = ["load_env", "test"]
