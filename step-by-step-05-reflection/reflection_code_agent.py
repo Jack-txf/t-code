@@ -7,12 +7,10 @@ import sys
 from pathlib import Path
 
 THIS_DIR = Path(__file__).resolve().parent
-STEP04_DIR = THIS_DIR.parent / "step-by-step-04-plan"
-# 直接运行时 Python 会自动加入脚本目录；显式加入后，模块化导入和 IDE 调试也一致。
+# 显式加入自身目录，保证直接运行、模块化导入和 IDE 调试都使用本阶段的模块。
 sys.path.insert(0, str(THIS_DIR))
-sys.path.insert(0, str(STEP04_DIR))
 
-import plan_code_agent as step04  # noqa: E402
+import base_code_agent as base  # noqa: E402
 from memory.memory_persistence import (  # noqa: E402
     DEFAULT_MEMORY_PATH,
     SAVE_MEMORY_TOOL_SCHEMA,
@@ -36,18 +34,18 @@ def review_execution(task: TaskState, history: list[dict]) -> ReviewResult:
         transcript=build_transcript(history),
     )
     kwargs = {
-        "model": step04._model_name(),
+        "model": base._model_name(),
         "messages": [{"role": "user", "content": prompt}],
         "stream": False,
     }
     try:
         # DeepSeek 的较新 OpenAI 兼容接口支持该参数；不支持时仍可依靠 prompt + 解析器工作。
-        response = step04.llm.chat.completions.create(  # type: ignore[union-attr]
+        response = base.llm.chat.completions.create(  # type: ignore[union-attr]
             **kwargs, response_format={"type": "json_object"}
         )
     except Exception as exc:
         print(f"[REFLECTION] JSON mode 不可用，降级为提示词约束：{exc}")
-        response = step04.llm.chat.completions.create(**kwargs)  # type: ignore[union-attr]
+        response = base.llm.chat.completions.create(**kwargs)  # type: ignore[union-attr]
     result = parse_review(response.choices[0].message.content or "")
     marker = "PASS" if result.passed else "FAIL"
     print(f"\n[REFLECTION] {marker}: {result.summary}")
@@ -73,7 +71,7 @@ async def repair_once(
     )
     history.append({"role": "user", "content": repair_prompt})
     print("\n[REPAIR] 根据 Reviewer 反馈进行一次受限修复...")
-    return await step04._agentic_loop(history, mcp, tool_schemas)
+    return await base._agentic_loop(history, mcp, tool_schemas)
 
 
 async def execute_with_reflection(
@@ -82,7 +80,7 @@ async def execute_with_reflection(
     mcp: MyMCPClient,
     tool_schemas: list[dict],
 ) -> list[dict]:
-    _, history = await step04.run_executing(task, history, mcp, tool_schemas)
+    _, history = await base.run_executing(task, history, mcp, tool_schemas)
     review = review_execution(task, history)
 
     for attempt in range(MAX_REPAIR_ATTEMPTS):
@@ -112,14 +110,14 @@ def print_banner() -> None:
 
 async def main_async() -> None:
     print_banner()
-    step04.init_llm()
+    base.init_llm()
     memory_content = load_memory(DEFAULT_MEMORY_PATH)
     print(f"[memory] {'已加载持久记忆' if memory_content else '暂无持久记忆'}")
     system_prompt = build_system_prompt_with_memory(BASE_SYSTEM_PROMPT)
 
     mcp = MyMCPClient()
     tool_infos = await mcp.list_tools()
-    tool_schemas = [step04._tool_info_to_schema(tool) for tool in tool_infos] + [SAVE_MEMORY_TOOL_SCHEMA]
+    tool_schemas = [base._tool_info_to_schema(tool) for tool in tool_infos] + [SAVE_MEMORY_TOOL_SCHEMA]
     print(f"[MCP] 已加载 {len(tool_schemas)} 个工具。")
 
     history: list[dict] = [{"role": "system", "content": system_prompt}]
@@ -138,14 +136,14 @@ async def main_async() -> None:
 
         actual_message = user_input[1:].strip() if user_input.startswith("!") else user_input
         if user_input.startswith("!") or not should_plan(actual_message):
-            response, history = await step04.run_direct(actual_message, history, mcp, tool_schemas)
+            response, history = await base.run_direct(actual_message, history, mcp, tool_schemas)
             print(f"\n【Assistant】: {response}\n")
             continue
 
         task.reset()
         task.user_request = actual_message
         task.status = TaskStatus.PLANNING
-        task.plan = step04.run_planning(actual_message, history, system_prompt)
+        task.plan = base.run_planning(actual_message, history, system_prompt)
         while task.status == TaskStatus.PLANNING:
             decision = input("确认计划？[y/n/反馈] --> ").strip()
             if decision.lower() in {"y", "yes", "确认", "好", "ok"}:
@@ -158,7 +156,7 @@ async def main_async() -> None:
                 print("[✗] 计划已取消。")
                 task.reset()
             else:
-                task.plan = step04.run_planning(f"{task.user_request}\n\n用户反馈：{decision}", history, system_prompt)
+                task.plan = base.run_planning(f"{task.user_request}\n\n用户反馈：{decision}", history, system_prompt)
 
 
 def main() -> None:

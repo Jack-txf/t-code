@@ -18,7 +18,8 @@
 
 ```text
 step-by-step-05-reflection/
-├── reflection_code_agent.py  # 主入口；复用 Step 04 的计划、记忆、MCP 和执行循环
+├── reflection_code_agent.py  # 主入口：计划、执行、反思、修复的完整控制流
+├── base_code_agent.py        # 从 Step 04 复制的计划与执行基础实现
 ├── reflection/
 │   ├── prompts.py             # Reviewer / 修复阶段提示词
 │   └── reviewer.py            # JSON 解析、执行记录提取、失败保守处理
@@ -30,12 +31,12 @@ step-by-step-05-reflection/
 在仓库根目录分别执行：
 
 ```powershell
-python step-by-step-04-plan/mymcp/tmcp_server.py
+python step-by-step-05-reflection/mymcp/tmcp_server.py
 python step-by-step-05-reflection/reflection_code_agent.py
 python step-by-step-05-reflection/tests/test_reviewer.py
 ```
 
-`.env` 配置、`~/.tcode.json` 中的 MCP Server 配置与 Step 04 相同。
+`.env` 配置、`~/.tcode.json` 中的 MCP Server 配置与 Step 04 相同。第 05 步的 `memory/`、`mymcp/`、`plan/`、`prompt/` 与 `base_code_agent.py` 均已随目录复制，因此不依赖 `step-by-step-04-plan/`。
 
 ## 关键设计
 
